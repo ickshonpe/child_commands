@@ -3,9 +3,9 @@
 Extension trait / facade on EntityCommands that allows you to 
 spawn entity hierarchies without nesting or collecting the ids.
 
-# Examples
+## Examples
 
-## Before:
+### Before:
 
 ```rust
 fn setup(mut commands: Commands) {
@@ -28,7 +28,7 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-## or
+### or
 
 ```rust
 fn setup(mut commands: Commands) {
@@ -54,7 +54,7 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-## After:
+### After:
 
 ```rust
 use child_commands::*;
@@ -76,7 +76,7 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-##Before:
+### Before:
 
 ```rust
 pub fn spawn_text_box(
@@ -121,7 +121,7 @@ pub fn spawn_text_box(
 }
 ```
 
-## After:
+### After:
 
 ```rust
 use child_commands::*;
@@ -162,7 +162,7 @@ pub fn spawn_text_box(
 }
 ```
 
-# Haven't implemented BuildChildren yet, but this is fine:
+### Haven't implemented BuildChildren yet, but this is fine:
 
 ```rust
 fn spawn_hierachy(
@@ -186,7 +186,7 @@ fn spawn_hierachy(
 ```
 
 
-# Todo
+## Todo
 
 * Implement ChildBuilder.
 
