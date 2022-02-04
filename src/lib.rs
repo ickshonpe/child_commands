@@ -8,16 +8,16 @@ pub struct ChildCommands<'w, 's, 'a> {
 }
 
 pub trait SpawnChild<'w, 's, 'a> {
-    fn spawn_child(&'a mut self) -> ChildCommands<'w, 's, 'a>;
-    fn spawn_child_bundle(&'a mut self, bundle: impl Bundle) -> ChildCommands<'w, 's, 'a> {
-        let mut child_commands = self.spawn_child();
+    fn with_child(&'a mut self) -> ChildCommands<'w, 's, 'a>;
+    fn with_child_bundle(&'a mut self, bundle: impl Bundle) -> ChildCommands<'w, 's, 'a> {
+        let mut child_commands = self.with_child();
         child_commands.insert_bundle(bundle);
         child_commands
     }
 }
 
 impl<'w, 's, 'a> SpawnChild<'w, 's, 'a>  for EntityCommands<'w, 's, 'a> {
-    fn spawn_child(&'a mut self) -> ChildCommands<'w, 's, 'a> {
+    fn with_child(&'a mut self) -> ChildCommands<'w, 's, 'a> {
         let parent = self.id();
         let child = self.commands().spawn().id();
         self.commands().add(AddChild { child, parent });
@@ -30,7 +30,7 @@ impl<'w, 's, 'a> SpawnChild<'w, 's, 'a>  for EntityCommands<'w, 's, 'a> {
 }
 
 impl<'w, 's, 'a> SpawnChild<'w, 's, 'a> for ChildCommands<'w, 's, 'a> {
-    fn spawn_child(&'a mut self) -> ChildCommands<'w, 's, 'a> {
+    fn with_child(&'a mut self) -> ChildCommands<'w, 's, 'a> {
         let parent = self.entity;
         let child = self.commands().spawn().id();
         self.commands().add(AddChild { child, parent });
@@ -50,7 +50,7 @@ impl <'w, 's, 'a> ChildCommands<'w, 's, 'a> {
     }
 
     pub fn insert_bundle(&mut self, bundle: impl Bundle) -> &mut Self {
-        let entity = self.entity;
+        let entity = self.id();
         self.commands().add(InsertBundle {
             entity,
             bundle,
@@ -59,7 +59,7 @@ impl <'w, 's, 'a> ChildCommands<'w, 's, 'a> {
     }
 
     pub fn insert(&mut self, component: impl Component) -> &mut Self {
-        let entity = self.entity;
+        let entity = self.id();
         self.commands().add(Insert {
             entity,
             component,
@@ -67,7 +67,7 @@ impl <'w, 's, 'a> ChildCommands<'w, 's, 'a> {
         self
     }
 
-    pub fn spawn_sibling(&'a mut self) -> ChildCommands<'w, 's, 'a> {
+    pub fn with_sibling(&'a mut self) -> Self {
         let sibling = self.commands().spawn().id();
         let parent = self.parent;
         self.commands().add(AddChild { child: sibling, parent });
@@ -78,16 +78,29 @@ impl <'w, 's, 'a> ChildCommands<'w, 's, 'a> {
         }
     }
 
-    pub fn spawn_sibling_bundle<T: Bundle>(&'a mut self, bundle: T) -> ChildCommands<'w, 's, 'a> {
-        let mut child_commands = self.spawn_sibling();
+    pub fn with_sibling_bundle<T: Bundle>(&'a mut self, bundle: T) -> Self {
+        let mut child_commands = self.with_sibling();
         child_commands.insert_bundle(bundle);
         child_commands
+    }
+
+    pub fn with_children(&mut self, spawn_children: impl FnOnce(&mut ChildBuilder)) -> &mut EntityCommands<'w, 's, 'a> {
+        let entity = self.entity;
+        unsafe {
+            let p = self.entity_commands as * mut EntityCommands;
+            let q = p.clone();
+            let ec = (*q).commands().entity(entity);
+            let r = (&ec) as * const EntityCommands;
+            std::ptr::swap(p, r as * mut EntityCommands);
+        }
+        self.entity_commands.with_children(spawn_children)
     }
 
     pub fn commands(&mut self) -> &mut Commands<'w, 's> {
         self.entity_commands.commands()
     }
 }
+
 
 
 #[cfg(test)]
@@ -115,7 +128,7 @@ mod tests {
         commands
         .spawn()
         .insert(A)
-        .spawn_child()
+        .with_child()
         .insert(B);
     }
 
@@ -124,7 +137,7 @@ mod tests {
     ) {
         commands
         .spawn_bundle((A,))
-        .spawn_child_bundle((B,));
+        .with_child_bundle((B,));
     }
 
     fn spawn_hierachy_3(
@@ -132,8 +145,8 @@ mod tests {
     ) {
         commands
         .spawn_bundle((A,))
-        .spawn_child_bundle((A, B,))
-        .spawn_child_bundle((A, B, C,));
+        .with_child_bundle((A, B,))
+        .with_child_bundle((A, B, C,));
     }
 
     fn spawn_hierachy_4(
@@ -141,10 +154,10 @@ mod tests {
     ) {
         commands
         .spawn_bundle((A,))
-        .spawn_child_bundle((A, B,))
-        .spawn_child_bundle((A, B, C,))
-        .spawn_sibling_bundle((A, B, C,))
-        .spawn_sibling_bundle((A, B, C,));
+        .with_child_bundle((A, B,))
+        .with_child_bundle((A, B, C,))
+        .with_sibling_bundle((A, B, C,))
+        .with_sibling_bundle((A, B, C,));
     }
 
     fn spawn_hierachy_5(
@@ -155,14 +168,14 @@ mod tests {
         .id();
 
         commands.entity(parent)
-        .spawn_child_bundle((B,))
-        .spawn_child_bundle((C,))
-        .spawn_sibling_bundle((C,));
+        .with_child_bundle((B,))
+        .with_child_bundle((C,))
+        .with_sibling_bundle((C,));
         
         commands.entity(parent)
-        .spawn_child_bundle((B,))
-        .spawn_child_bundle((C,))
-        .spawn_sibling_bundle((C,));    
+        .with_child_bundle((B,))
+        .with_child_bundle((C,))
+        .with_sibling_bundle((C,));    
     }
 
     fn spawn_hierachy_6(
@@ -170,16 +183,17 @@ mod tests {
     ) {
         commands
         .spawn_bundle((A,))     
+        
         .with_children(|builder| {
             builder
             .spawn_bundle((B,))
-            .spawn_child_bundle((C,))
-            .spawn_child_bundle((D,));
+            .with_child_bundle((C,))
+            .with_child_bundle((D,));
 
             builder
             .spawn_bundle((B,))
-            .spawn_child_bundle((C,))
-            .spawn_child_bundle((D,));;
+            .with_child_bundle((C,))
+            .with_child_bundle((D,));
         });
     }
 
@@ -242,5 +256,13 @@ mod tests {
         SystemStage::single_threaded().add_system(spawn_hierachy_5).run(&mut world);
         assert_eq!(world.query::<Entity>().iter(&world).len(), 7);
         assert_eq!(world.query::<(&Parent, &C)>().iter(&world).len(), 4);
+    }
+
+    #[test]
+    fn spawn_child_6() {
+        let mut world = World::default();
+        SystemStage::single_threaded().add_system(spawn_hierachy_6).run(&mut world);
+        assert_eq!(world.query::<Entity>().iter(&world).len(), 7);
+        assert_eq!(world.query::<(&Parent, &D)>().iter(&world).len(), 2);
     }
 }

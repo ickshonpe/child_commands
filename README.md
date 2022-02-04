@@ -1,7 +1,7 @@
 # Child Commands
 
-Extension trait / facade on EntityCommands that allows you to 
-spawn entity hierarchies without nesting or collecting the ids.
+Experimental extension trait / facade on EntityCommands for more ergonomic 
+entity hierarchy spawning.
 
 ## Examples
 
@@ -65,11 +65,11 @@ fn setup(mut commands: Commands) {
             transform: Transform::from_xyz(1.0, 1.0, 1.0),
             ..Default::default()
         })
-        .spawn_child_bundle(PbrBundle {
+        .with_child_bundle(PbrBundle {
             transform: Transform::from_xyz(1.0, 1.0, 1.0),
             ..Default::default()
         })
-        .spawn_sibling_bundle(PbrBundle {
+        .with_sibling_bundle(PbrBundle {
             transform: Transform::from_xyz(2.0, 2.0, 2.0),
             ..Default::default()
         });
@@ -139,7 +139,7 @@ pub fn spawn_text_box(
         },
         ..Default::default()
     })
-    .spawn_child_bundle(NodeBundle {
+    .with_child_bundle(NodeBundle {
         color: UiColor (Color::DARK_GRAY),
         style: Style {
             padding: Rect::all(Val::Px(4.0)),
@@ -147,7 +147,7 @@ pub fn spawn_text_box(
         },
         ..Default::default()
     })
-    .spawn_child_bundle(TextBundle {
+    .with_child_bundle(TextBundle {
         text: Text::with_section(
             "Hello, world!",
             TextStyle {
@@ -162,37 +162,57 @@ pub fn spawn_text_box(
 }
 ```
 
-### Haven't implemented BuildChildren yet, but this is fine:
+### Also have with_children for split hierarchies 
 
 ```rust
 fn spawn_hierachy(
     mut commands: Commands
 ) {
     commands
-    .spawn_bundle(A)     
+    .spawn()     
+    .with_child()
     .with_children(|builder| {
         builder
-        .spawn_bundle(B)
-        .spawn_child_bundle(C)
-        .spawn_child_bundle(D);
-
+        .spawn()        // only an EntityCommands, so can't call with_sibling here unfortunately.
+        .with_child()
+        .with_sibling();
+    })
+    .with_sibling()
+    .with_children(|builder| {
         builder
-        .spawn_bundle(B)
-        .spawn_child_bundle(C)
-        .spawn_child_bundle(D);
+        .spawn()
+        .with_child()
+        .with_sibling();
+    })
+    .with_sibling()
+    .with_children(|builder| {
+        builder
+        .spawn()
+        .with_child()
+        .with_sibling()
+        .with_sibling()
+        .with_sibling();
     });
 }
 
 ```
 
 
+## Other Info
+
+* Used unsafe to hack around the private fields to get with_children on ChildCommands. *Very likely unsound.*
+
+* The with_children builder returns an EntityCommands not a ChildCommands, despite it being a child entity.
+I can't see a simple way with extension traits to get past the private fields in ChildBuilder and Children etc.
+
+* No idea about performance.
+
 ## Todo
-
-* Implement ChildBuilder.
-
-* Haven't considered performance at all.
 
 * Maybe some sort of spawn_brood function to spawn multiple children at once.
 
-* See if there is an ergonomic way to store entities ids in the middle of the hierachy.
+* Investigate if there is an ergonomic way to retrieve ids from the middle of the hierachy. "with_id" doesn't seem that promising.
+Might be an anti-feature anyway. 
+
+
 
