@@ -75,7 +75,6 @@ fn setup(mut commands: Commands) {
         });
 }
 ```
-#
 
 ##Before:
 
@@ -162,8 +161,6 @@ pub fn spawn_text_box(
     });
 }
 ```
-
-*I'm clueless about flexbox so don't expect this to work*
 
 # Haven't implemented BuildChildren yet, but this is fine:
 
