@@ -3,6 +3,8 @@
 Experimental extension trait / facade on EntityCommands for more ergonomic 
 entity hierarchy spawning.
 
+Superseded by flat_commands, extending EntityCommands was a silly idea.
+
 ## Examples
 
 ### Before:
